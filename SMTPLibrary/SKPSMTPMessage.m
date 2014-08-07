@@ -93,7 +93,6 @@ NSString *kSKPSMTPPartContentTransferEncodingKey = @"kSKPSMTPPartContentTransfer
 
 - (void)dealloc
 {
-    NSLog(@"dealloc %@", self);
     self.login = nil;
     self.pass = nil;
     self.relayHost = nil;
@@ -105,6 +104,7 @@ NSString *kSKPSMTPPartContentTransferEncodingKey = @"kSKPSMTPPartContentTransfer
 	self.bccEmail = nil;
     self.parts = nil;
     self.inputString = nil;
+    self.tag = nil;
     
     [inputStream release];
     inputStream = nil;
