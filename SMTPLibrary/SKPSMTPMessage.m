@@ -44,8 +44,8 @@ NSString *kSKPSMTPPartContentTransferEncodingKey = @"kSKPSMTPPartContentTransfer
 @interface SKPSMTPMessage ()
 
 @property(nonatomic, retain) NSMutableString *inputString;
-@property(retain) NSTimer *connectTimer;
-@property(retain) NSTimer *watchdogTimer;
+@property(nonatomic, retain) NSTimer *connectTimer;
+@property(nonatomic, retain) NSTimer *watchdogTimer;
 
 - (void)parseBuffer;
 - (BOOL)sendParts;
@@ -146,13 +146,15 @@ NSString *kSKPSMTPPartContentTransferEncodingKey = @"kSKPSMTPPartContentTransfer
 - (void)startShortWatchdog
 {
     NSLog(@"*** starting short watchdog ***");
-    self.watchdogTimer = [NSTimer scheduledTimerWithTimeInterval:SHORT_LIVENESS_TIMEOUT target:self selector:@selector(connectionWatchdog:) userInfo:nil repeats:NO];
+    self.watchdogTimer = [NSTimer timerWithTimeInterval:SHORT_LIVENESS_TIMEOUT target:self selector:@selector(connectionWatchdog:) userInfo:nil repeats:NO];
+    [[NSRunLoop mainRunLoop] addTimer:self.watchdogTimer forMode:NSRunLoopCommonModes];
 }
 
 - (void)startLongWatchdog
 {
     NSLog(@"*** starting long watchdog ***");
-    self.watchdogTimer = [NSTimer scheduledTimerWithTimeInterval:LONG_LIVENESS_TIMEOUT target:self selector:@selector(connectionWatchdog:) userInfo:nil repeats:NO];
+    self.watchdogTimer = [NSTimer timerWithTimeInterval:LONG_LIVENESS_TIMEOUT target:self selector:@selector(connectionWatchdog:) userInfo:nil repeats:NO];
+    [[NSRunLoop mainRunLoop] addTimer:self.watchdogTimer forMode:NSRunLoopCommonModes];
 }
 
 - (void)stopWatchdog
@@ -256,14 +258,11 @@ NSString *kSKPSMTPPartContentTransferEncodingKey = @"kSKPSMTPPartContentTransfer
     
     if (![relayPorts count])
     {
-        dispatch_async(dispatch_get_main_queue(), ^{
-            [delegate messageFailed:self 
-                              error:[NSError errorWithDomain:@"SKPSMTPMessageError" 
-                                                        code:kSKPSMTPErrorConnectionFailed 
-                                                    userInfo:[NSDictionary dictionaryWithObjectsAndKeys:NSLocalizedString(@"Unable to connect to the server.", @"server connection fail error description"),NSLocalizedDescriptionKey,
-                                                              NSLocalizedString(@"Try sending your message again later.", @"server generic error recovery"),NSLocalizedRecoverySuggestionErrorKey,nil]]];
-
-        });
+        [delegate messageFailed:self 
+                          error:[NSError errorWithDomain:@"SKPSMTPMessageError" 
+                                                    code:kSKPSMTPErrorConnectionFailed 
+                                                userInfo:[NSDictionary dictionaryWithObjectsAndKeys:NSLocalizedString(@"Unable to connect to the server.", @"server connection fail error description"),NSLocalizedDescriptionKey,
+                                                          NSLocalizedString(@"Try sending your message again later.", @"server generic error recovery"),NSLocalizedRecoverySuggestionErrorKey,nil]]];
         
         return NO;
     }
@@ -278,8 +277,8 @@ NSString *kSKPSMTPPartContentTransferEncodingKey = @"kSKPSMTPPartContentTransfer
     
     
     self.connectTimer = [NSTimer timerWithTimeInterval:connectTimeout target:self selector:@selector(connectionConnectedCheck:) userInfo:nil repeats:NO];
-    [[NSRunLoop mainRunLoop] addTimer:self.connectTimer forMode:NSDefaultRunLoopMode];
-
+    [[NSRunLoop mainRunLoop] addTimer:self.connectTimer forMode:NSRunLoopCommonModes];
+    
     [NSStream getStreamsToHostNamed:relayHost port:relayPort inputStream:&inputStream outputStream:&outputStream];
     if ((inputStream != nil) && (outputStream != nil))
     {
@@ -292,8 +291,10 @@ NSString *kSKPSMTPPartContentTransferEncodingKey = @"kSKPSMTPPartContentTransfer
         [inputStream setDelegate:self];
         [outputStream setDelegate:self];
         
-        [inputStream scheduleInRunLoop:[NSRunLoop mainRunLoop] forMode:NSDefaultRunLoopMode];
-        [outputStream scheduleInRunLoop:[NSRunLoop mainRunLoop] forMode:NSDefaultRunLoopMode];
+        [inputStream scheduleInRunLoop:[NSRunLoop mainRunLoop]
+                               forMode:NSRunLoopCommonModes];
+        [outputStream scheduleInRunLoop:[NSRunLoop mainRunLoop]
+                                forMode:NSRunLoopCommonModes];
         [inputStream open];
         [outputStream open];
         
